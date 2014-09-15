@@ -4,17 +4,17 @@ var Router = function () {
 
 	this.table = [];
 
-	this.on = function (action, path, fn) {
+	this.on = function (action, path, process) {
 		this.table.push({
 			match: route(action + "|" + path),
-			fn: fn
+			process: process
 		});
 	};
 
 	this.match = function (action, path, data) {
 		for (var i = 0; i < this.table.length; i++) {
 			var params = this.table[i].match(action + "|" + path);
-			if (params !== false) return this.table[i].fn(params, data);
+			if (params !== false) return this.table[i].process(params, data);
 		}
 		return false;
 	};
@@ -65,8 +65,8 @@ module.exports = function (io, debug) {
 
 	return {
 
-		on: function (action, path, fn) {
-			router.on(action, path, fn);
+		on: function (action, path, process) {
+			router.on(action, path, process);
 		}
 
 	};
