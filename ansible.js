@@ -1,4 +1,5 @@
-var Router = require("./router").Router;
+var Router = require("./router").Router,
+	Route = Router.Route;
 
 var ansible = module.exports = function (io, debug) {
 
@@ -24,9 +25,9 @@ var ansible = module.exports = function (io, debug) {
 		return router.process(action, path, function (_) {
 			return {
 				params: _.params,
-				data: _.data,
+				data: data,
 				list: function (data, path) { return list(data, path); },
-				item: function (data) { return ansible.item(data, new Route(_.path).reverse(_.params)); }
+				item: function (data) { return item(data, new Route(_.path).reverse(_.params)); }
 			};
 		});
 
@@ -40,6 +41,7 @@ var ansible = module.exports = function (io, debug) {
 			if (debug) console.log("Subscribing: " + channel);
 			socket.join(channel);
 			var data = process("get", channel);
+			console.log(data);
 			if (data) {
 				socket.emit("ansible:update", {
 					channel: channel,
@@ -65,9 +67,13 @@ var ansible = module.exports = function (io, debug) {
 		});
 
 		socket.on("ansible:update", function (message) {
-			if (debug) console.log("Incoming update: " + message.channel);
+			if (debug) console.log("Incoming update: " + message.channel, message.data);
 			var processedData = process("update", message.channel, message.data);
-			if (processedData) io.in(message.channel).emit("ansible:update", processedData);
+			console.log("processed:", processedData);
+			if (processedData) socket.broadcast.in(message.channel).emit("ansible:update", {
+				channel: message.channel,
+				data: processedData
+			});
 			else socket.emit("ansible:error", 400);
 		});
 

@@ -5,6 +5,17 @@ var app = require("express")(),
 
 server.listen(29000);
 
-ansible.on("get", "/test/:id(/:other)", function (_) {
-	return "data! " + _.params.id + _.params.other;
+var data = "hello!";
+
+setInterval(function () {
+	console.log(data);
+}, 3000);
+
+ansible.on("get", "/test/:id", function (_) {
+	return data;
+});
+
+ansible.on("update", "/test/:id", function (_) {
+	data = _.data;
+	return data;
 });

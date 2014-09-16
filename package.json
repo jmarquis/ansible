@@ -11,5 +11,10 @@
   "bugs": {
     "url": "https://github.com/jmarquis/ansible-server/issues"
   },
-  "homepage": "https://github.com/jmarquis/ansible-server"
+  "homepage": "https://github.com/jmarquis/ansible-server",
+  "dependencies": {
+    "express": "^4.9.0",
+    "socket.io": "^1.1.0",
+    "route-parser": "0.0.2"
+  }
 }

@@ -20,3 +20,5 @@ var Router = module.exports.Router = function () {
 	};
 
 };
+
+Router.Route = Route;
