@@ -5,6 +5,6 @@ var app = require("express")(),
 
 server.listen(29000);
 
-ansible.on("get", "/test/:id/:other?", function (params) {
-	return "data! " + params.id;
+ansible.on("get", "/test/:id(/:other)", function (_) {
+	return "data! " + _.params.id + _.params.other;
 });

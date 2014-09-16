@@ -1,48 +1,51 @@
-var route = require("path-match")();
+var Router = require("./router").Router;
 
-var Router = function () {
+var ansible = module.exports = function (io, debug) {
 
-	this.table = [];
+	var router = new Router();
 
-	this.on = function (action, path, process) {
-		this.table.push({
-			match: route(action + "|" + path),
-			process: process
-		});
+	var item = function (data, path) {
+		return {
+			channel: path,
+			data: data
+		};
 	};
 
-	this.match = function (action, path, data) {
-		for (var i = 0; i < this.table.length; i++) {
-			var params = this.table[i].match(action + "|" + path);
-			if (params !== false) return this.table[i].process(params, data);
+	var list = function (data, path) {
+		var list = [];
+		for (var i = 0; i < data.length; i++) {
+			list.push(item(data, new Route(path).reverse(data)));
 		}
-		return false;
+		return list;
 	};
 
-};
+	var process = function (action, path, data) {
 
-var router = new Router();
+		return router.process(action, path, function (_) {
+			return {
+				params: _.params,
+				data: _.data,
+				list: function (data, path) { return list(data, path); },
+				item: function (data) { return ansible.item(data, new Route(_.path).reverse(_.params)); }
+			};
+		});
 
-module.exports = function (io, debug) {
+	};
 
 	io.on("connection", function (socket) {
 
 		if (debug) console.log("Incoming connection");
 
-		var retrieve = function (channel) {
-			var data = router.match("get", channel);
+		socket.on("ansible:subscribe", function (channel) {
+			if (debug) console.log("Subscribing: " + channel);
+			socket.join(channel);
+			var data = process("get", channel);
 			if (data) {
 				socket.emit("ansible:update", {
 					channel: channel,
 					data: data
 				});
 			}
-		};
-
-		socket.on("ansible:subscribe", function (channel) {
-			if (debug) console.log("Subscribing: " + channel);
-			socket.join(channel);
-			retrieve(channel);
 		});
 
 		socket.on("ansible:unsubscribe", function (channel) {
@@ -52,13 +55,20 @@ module.exports = function (io, debug) {
 
 		socket.on("ansible:get", function (channel) {
 			if (debug) console.log("Retrieving: " + channel);
-			retrieve(channel);
+			var data = process("get", channel);
+			if (data) {
+				socket.emit("ansible:update", {
+					channel: channel,
+					data: data
+				});
+			}
 		});
 
-		socket.on("ansible:update", function (data) {
-			if (debug) console.log("Incoming update: " + data.channel);
-			router.match("update", data.channel);
-			socket.broadcast.emit("ansible:update", data);
+		socket.on("ansible:update", function (message) {
+			if (debug) console.log("Incoming update: " + message.channel);
+			var processedData = process("update", message.channel, message.data);
+			if (processedData) io.in(message.channel).emit("ansible:update", processedData);
+			else socket.emit("ansible:error", 400);
 		});
 
 	});
