@@ -69,7 +69,7 @@ var ansible = module.exports = function (io, debug) {
 		socket.on("ansible:update", function (message) {
 			if (debug) console.log("Incoming update: " + message.channel, message.data);
 			var processedData = process("update", message.channel, message.data);
-			console.log("processed:", processedData);
+			if (debug) console.log("Processed:", processedData);
 			if (processedData) socket.broadcast.in(message.channel).emit("ansible:update", {
 				channel: message.channel,
 				data: processedData
