@@ -5,17 +5,24 @@ var app = require("express")(),
 
 server.listen(29000);
 
-var data = "hello!";
+var people = {
+	123: {
+		name: "John"
+	},
+	456: {
+		name: "Billy"
+	}
+};
 
 setInterval(function () {
-	console.log(data);
+	console.log(people);
 }, 3000);
 
-ansible.on("get", "/test/:id", function (_) {
-	return data;
+ansible.on("get", "/test/:id", function (params, data) {
+	return people[params.id] || null;
 });
 
-ansible.on("update", "/test/:id", function (_) {
-	data = _.data;
-	return data;
+ansible.on("update", "/test/:id", function (params, data) {
+	people[params.id] = data;
+	return people[params.id];
 });

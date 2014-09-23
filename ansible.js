@@ -15,20 +15,16 @@ var ansible = module.exports = function (io, debug) {
 	var list = function (data, path) {
 		var list = [];
 		for (var i = 0; i < data.length; i++) {
-			list.push(item(data, new Route(path).reverse(data)));
+			list.push(item(data, new Route(path).fill(data || {})));
 		}
 		return list;
 	};
 
 	var process = function (action, path, data) {
 
-		return router.process(action, path, function (_) {
-			return {
-				params: _.params,
-				data: data,
-				list: function (data, path) { return list(data, path); },
-				item: function (data) { return item(data, new Route(_.path).reverse(_.params)); }
-			};
+		console.log("ansible.process:", action, path);
+		return router.process(action, path, function (action, path, params) {
+			return [params, data];
 		});
 
 	};
@@ -40,12 +36,11 @@ var ansible = module.exports = function (io, debug) {
 		socket.on("ansible:subscribe", function (channel) {
 			if (debug) console.log("Subscribing: " + channel);
 			socket.join(channel);
-			var data = process("get", channel);
-			console.log(data);
-			if (data) {
+			var result = process("get", channel);
+			if (result) {
 				socket.emit("ansible:update", {
 					channel: channel,
-					data: data
+					data: result
 				});
 			}
 		});
@@ -55,26 +50,49 @@ var ansible = module.exports = function (io, debug) {
 			socket.leave(channel);
 		});
 
-		socket.on("ansible:get", function (channel) {
+		socket.on("ansible:get", function (channel, callback) {
+
 			if (debug) console.log("Retrieving: " + channel);
-			var data = process("get", channel);
-			if (data) {
+			var result = process("get", channel);
+			if (callback) callback(result);
+			if (result) {
 				socket.emit("ansible:update", {
 					channel: channel,
-					data: data
+					data: result
 				});
 			}
+
 		});
 
-		socket.on("ansible:update", function (message) {
+		socket.on("ansible:update", function (message, callback) {
+
 			if (debug) console.log("Incoming update: " + message.channel, message.data);
-			var processedData = process("update", message.channel, message.data);
-			if (debug) console.log("Processed:", processedData);
-			if (processedData) socket.broadcast.in(message.channel).emit("ansible:update", {
-				channel: message.channel,
-				data: processedData
-			});
-			else socket.emit("ansible:error", 400);
+			var result = process("update", message.channel, message.data);
+			if (debug) console.log("Processed:", result);
+			if (callback) callback(result);
+			if (result) {
+				socket.broadcast.in(message.channel).emit("ansible:update", {
+					channel: message.channel,
+					data: result
+				});
+			}
+
+		});
+
+		socket.on("ansible:delete", function (channel, callback) {
+
+			var result = process("delete", channel);
+			if (callback) callback(result);
+			if (result) {
+				socket.broadcast.in(channel).emit("ansible:delete", {
+					channel: channel
+				});
+			}
+
+		});
+
+		socket.on("ansible:query", function (path, callback) {
+			// TODO
 		});
 
 	});
